@@ -6,8 +6,8 @@ class MeerkatHandler(OSSHandler):
     Handler for the Zoho Meerkat-7B-DPO model.
     """
 
-    def __init__(self, model_name, temperature) -> None:
-        super().__init__(model_name, temperature)
+    def __init__(self, model_name, temperature, **kwargs) -> None:
+        super().__init__(model_name, temperature, **kwargs)
         self.stop_token_ids = [0]
 
     @override

@@ -50,9 +50,20 @@ def parse_json_function_call(source_code):
 
     for function_call in json_dict:
         if isinstance(function_call, dict):
-            if "function" in function_call and "parameters" in function_call:
-                function_name = function_call["function"]
-                arguments = function_call["parameters"]
+            # Support both "function"/"parameters" and "name"/"arguments" naming conventions
+            function_name = function_call.get("function") or function_call.get("name")
+            arguments = function_call.get("parameters") or function_call.get("arguments")
+
+            if function_name and arguments is not None:
+                # If arguments is a string (stringified JSON), parse it into a dict
+                if isinstance(arguments, str):
+                    try:
+                        arguments = json.loads(arguments)
+                    except json.JSONDecodeError:
+                        # If string parsing fails, keep it as is or handle appropriately
+                        print(f"--- JSON Parser: Warning - Could not parse stringified arguments for {function_name} ---")
+                        pass
+
                 function_calls.append({function_name: arguments})
             
     return function_calls

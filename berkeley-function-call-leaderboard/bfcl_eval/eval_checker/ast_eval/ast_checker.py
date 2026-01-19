@@ -388,22 +388,32 @@ def simple_function_checker(
             expected_type_converted = JAVA_TYPE_CONVERSION[expected_type_description]
 
             if expected_type_description in JAVA_TYPE_CONVERSION:
-                if type(value) != str:
-                    result["valid"] = False
-                    result["error"].append(
-                        f"Incorrect type for parameter {repr(param)}. Expected type String, got {type(value).__name__}. Parameter value: {repr(value)}."
-                    )
-                    result["error_type"] = "type_error:java"
-                    return result
-
+                # Pre-calculate nested type if needed for type_checker
                 if expected_type_description in NESTED_CONVERSION_TYPE_LIST:
                     nested_type = param_details[param]["items"]["type"]
                     nested_type_converted = JAVA_TYPE_CONVERSION[nested_type]
-                    value = java_type_converter(
-                        value, expected_type_description, nested_type
-                    )
+
+                # If the value is already the expected type (from JSON parser)
+                if type(value) != str:
+                    if type(value) == expected_type_converted:
+                        pass  # Already correct type
+                    elif expected_type_converted == float and type(value) == int:
+                        value = float(value)  # Auto-convert int to float
+                    else:
+                        result["valid"] = False
+                        result["error"].append(
+                            f"Incorrect type for parameter {repr(param)}. Expected type String or {expected_type_converted.__name__}, got {type(value).__name__}. Parameter value: {repr(value)}."
+                        )
+                        result["error_type"] = "type_error:java"
+                        return result
                 else:
-                    value = java_type_converter(value, expected_type_description)
+                    # If value is string, parse it using java_type_converter
+                    if expected_type_description in NESTED_CONVERSION_TYPE_LIST:
+                        value = java_type_converter(
+                            value, expected_type_description, nested_type
+                        )
+                    else:
+                        value = java_type_converter(value, expected_type_description)
 
         elif language == Language.JAVASCRIPT:
             expected_type_converted = JS_TYPE_CONVERSION[expected_type_description]

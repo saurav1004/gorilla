@@ -6,8 +6,8 @@ class OLMoHandler(OSSHandler):
     Handler for the AllenAI OLMo 2 model series.
     """
 
-    def __init__(self, model_name, temperature) -> None:
-        super().__init__(model_name, temperature)
+    def __init__(self, model_name, temperature, **kwargs) -> None:
+        super().__init__(model_name, temperature, **kwargs)
 
     @override
     def _format_prompt(self, messages, function):
