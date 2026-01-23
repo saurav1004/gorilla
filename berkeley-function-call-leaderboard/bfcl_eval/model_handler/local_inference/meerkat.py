@@ -8,7 +8,7 @@ class MeerkatHandler(OSSHandler):
 
     def __init__(self, model_name, temperature, **kwargs) -> None:
         super().__init__(model_name, temperature, **kwargs)
-        self.stop_token_ids = [0]
+
 
     @override
     def _format_prompt(self, messages, function):
