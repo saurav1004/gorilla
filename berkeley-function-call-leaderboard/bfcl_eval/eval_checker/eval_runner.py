@@ -280,9 +280,15 @@ def _evaluate_single_relevance_entry(
     decoded_result = None
     decode_error = None
 
+    # Determine the correct return format based on the model name
+    # This logic matches how ast_file_runner handles formats
+    return_format = ReturnFormat.PYTHON
+    if "Meerkat" in model_name or "OLMo" in model_name:
+        return_format = ReturnFormat.JSON
+
     try:
         decoded_result = handler.decode_ast(
-            model_result_item, language=ReturnFormat.PYTHON, has_tool_call_tag=False
+            model_result_item, language=return_format, has_tool_call_tag=False
         )
         # Decode successfully, which means the model output is in valid function call format
         contain_func_call = True
@@ -356,7 +362,7 @@ def _evaluate_single_ast_entry(
             "test_category": test_category,
             "valid": False,
             "error": [f"Parsing/Decoding timed out after {timeout_duration} seconds. Skipping."],
-            "error_type": "ast_decoder:timeout_failure", # <-- NEW ERROR TYPE
+            "error_type": "ast_decoder:timeout_failure",
             "prompt": prompt_entry,
             "model_result_raw": model_result_item_raw,
             "possible_answer": possible_answer_item,

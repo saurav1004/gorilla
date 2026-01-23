@@ -352,8 +352,19 @@ def simple_function_checker(
 
     func_name = convert_func_name(func_name, model_name)
 
-    # Check if function name matches
-    if func_name not in model_output:
+    # Check if function name matches, handling potentially replaced dots
+    matched_key = None
+    if func_name in model_output:
+        matched_key = func_name
+    else:
+        # Fallback: check if the model output has a key that matches if we replace dots with underscores
+        # This handles cases like 'uber.ride' (model) vs 'uber_ride' (ground truth)
+        for key in model_output:
+            if key.replace(".", "_") == func_name:
+                matched_key = key
+                break
+    
+    if matched_key is None:
         result["valid"] = False
         result["error"].append(
             f"Function name {repr(func_name)} not found in model output."
@@ -361,7 +372,7 @@ def simple_function_checker(
         result["error_type"] = "simple_function_checker:wrong_func_name"
         return result
 
-    model_params = model_output[func_name]
+    model_params = model_output[matched_key]
 
     # Check for required parameters in model output
     for param in required_params:
