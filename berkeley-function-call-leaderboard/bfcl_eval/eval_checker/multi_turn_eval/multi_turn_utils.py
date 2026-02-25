@@ -135,6 +135,15 @@ def _process_method_calls(function_call_string: str, instance_mapping: dict) -> 
         func_name = match.group(1)
         if func_name in instance_mapping:
             return f"{instance_mapping[func_name]}.{func_name}"
+
+        # Some model/tooling stacks replace dots in tool names with underscores
+        # (e.g., `GorillaFileSystem.cd` -> `GorillaFileSystem_cd`).
+        # In multi-turn execution we only map by method names, so we recover
+        # these class-prefixed names by matching the method suffix.
+        for method_name, instance_name in instance_mapping.items():
+            if func_name.endswith(f"_{method_name}"):
+                return f"{instance_name}.{method_name}"
+
         return func_name
 
     # Regular expression to match function names
