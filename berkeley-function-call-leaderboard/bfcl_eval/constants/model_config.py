@@ -40,7 +40,7 @@ from bfcl_eval.model_handler.local_inference.deepseek_reasoning import (
 from bfcl_eval.model_handler.local_inference.falcon_fc import Falcon3FCHandler
 from bfcl_eval.model_handler.local_inference.gemma import GemmaHandler
 from bfcl_eval.model_handler.local_inference.olmo import OLMoHandler
-from bfcl_eval.model_handler.local_inference.olmo3 import OLMo3Handler
+#from bfcl_eval.model_handler.local_inference.olmo3 import OLMo3Handler
 from bfcl_eval.model_handler.local_inference.meerkat import MeerkatHandler
 from bfcl_eval.model_handler.local_inference.glm import GLMHandler
 from bfcl_eval.model_handler.local_inference.granite import (
@@ -1286,18 +1286,18 @@ local_inference_model_map = {
         is_fc_model=False,
         underscore_to_dot=True,
 ),
-    "allenai/Olmo-3-7B-Instruct": ModelConfig(
-        model_name="allenai/Olmo-3-7B-Instruct",
-        display_name="Olmo-3-7B-Instruct",
-        url="https://huggingface.co/allenai/Olmo-3-7B-Instruct",
-        org="AllenAI",
-        license="Apache 2.0",
-        model_handler=OLMo3Handler,
-        input_price=None,
-        output_price=None,
-        is_fc_model=False,
-        underscore_to_dot=True,
-),
+#    "allenai/Olmo-3-7B-Instruct": ModelConfig(
+#        model_name="allenai/Olmo-3-7B-Instruct",
+#        display_name="Olmo-3-7B-Instruct",
+#        url="https://huggingface.co/allenai/Olmo-3-7B-Instruct",
+#        org="AllenAI",
+#        license="Apache 2.0",
+#        model_handler=OLMo3Handler,
+#        input_price=None,
+#        output_price=None,
+#        is_fc_model=False,
+#        underscore_to_dot=True,
+#),
     "allenai/OLMo-2-1124-7B-DPO": ModelConfig(
         model_name="allenai/OLMo-2-1124-7B-DPO",
         display_name="OLMo-2-1124-7B-DPO",

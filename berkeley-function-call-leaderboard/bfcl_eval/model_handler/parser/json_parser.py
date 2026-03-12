@@ -3,18 +3,86 @@ import re
 import time
 import signal 
 import sys
+import multiprocessing
 
 class TimeoutException(Exception): pass
 
 def _timeout_handler(signum, frame):
     raise TimeoutException("JSON parsing timed out")
 
-
-def parse_json_function_call(source_code):
-    # --- Your existing regex ---
+def _regex_worker(source_code, return_dict):
+    # Your exact original regex
     json_match = re.search(r"\[\s*{.*?}\s*(?:,\s*{.*?}\s*)*\]", source_code, re.DOTALL)
     if json_match:
-        source_code = json_match.group(0)
+        return_dict['match'] = json_match.group(0)
+
+def extract_json_array(source_code):
+    # Find the first '[' or '{' to handle both array and object formats
+    start_idx_array = source_code.find('[')
+    start_idx_obj = source_code.find('{')
+    
+    if start_idx_array == -1 and start_idx_obj == -1:
+        return source_code
+        
+    # Start from whichever comes first
+    valid_indices = [i for i in (start_idx_array, start_idx_obj) if i != -1]
+    start_idx = min(valid_indices)
+    
+    open_bracket = source_code[start_idx]
+    close_bracket = ']' if open_bracket == '[' else '}'
+    
+    count = 0
+    in_string = False
+    escape = False
+    
+    for i in range(start_idx, len(source_code)):
+        char = source_code[i]
+        
+        if not in_string:
+            if char == '"':
+                in_string = True
+            elif char == open_bracket:
+                count += 1
+            elif char == close_bracket:
+                count -= 1
+                # If we've closed the outermost bracket, return the exact slice
+                if count == 0:
+                    return source_code[start_idx:i+1]
+        else:
+            if escape:
+                escape = False
+            elif char == '\\':
+                escape = True
+            elif char == '"':
+                in_string = False
+                
+    # Fallback if it ends abruptly without a matching closing bracket
+    return source_code[start_idx:]
+
+def parse_json_function_call(source_code):
+    # --- Your existing regex ---\
+#    source_code = extract_json_array(source_code)
+#    json_match = re.search(r"\[\s*{.*?}\s*(?:,\s*{.*?}\s*)*\]", source_code, re.DOTALL)
+#    if json_match:
+#        source_code = json_match.group(0)
+
+    manager = multiprocessing.Manager()
+    return_dict = manager.dict()
+    p = multiprocessing.Process(target=_regex_worker, args=(source_code, return_dict))
+    
+    p.start()
+    p.join(2) # Give the regex up to 2 seconds to finish
+    
+    if p.is_alive():
+        # If it's still running, it hit catastrophic backtracking! Kill it and skip.
+        p.terminate()
+        p.join()
+        print(f"--- JSON Parser: Regex Catastrophic Backtracking TIMEOUT. Skipping sample. ---")
+        return []
+
+    if 'match' in return_dict:
+        source_code = return_dict['match']
+
 
     signal.signal(signal.SIGALRM, _timeout_handler)
     signal.alarm(5)
