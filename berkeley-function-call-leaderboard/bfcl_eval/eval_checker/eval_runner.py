@@ -1,6 +1,7 @@
 import argparse
 import statistics
 from collections import defaultdict
+import signal
 
 from bfcl_eval.constants.enums import Language, ReturnFormat
 from bfcl_eval.constants.eval_config import *
@@ -20,6 +21,12 @@ from bfcl_eval.model_handler.utils import parse_prompt_variation_params
 from bfcl_eval.utils import *
 from dotenv import load_dotenv
 from tqdm import tqdm
+
+class TimeoutException(Exception):
+    pass
+
+def _timeout_handler(signum, frame):
+    raise TimeoutException("Operation timed out")
 
 
 def get_handler(model_name: str) -> BaseHandler:
@@ -273,9 +280,15 @@ def _evaluate_single_relevance_entry(
     decoded_result = None
     decode_error = None
 
+    # Determine the correct return format based on the model name
+    # This logic matches how ast_file_runner handles formats
+    return_format = ReturnFormat.PYTHON
+    if "Meerkat" in model_name or "OLMo" in model_name:
+        return_format = ReturnFormat.JSON
+
     try:
         decoded_result = handler.decode_ast(
-            model_result_item, language=ReturnFormat.PYTHON, has_tool_call_tag=False
+            model_result_item, language=return_format, has_tool_call_tag=False
         )
         # Decode successfully, which means the model output is in valid function call format
         contain_func_call = True
@@ -327,16 +340,35 @@ def _evaluate_single_ast_entry(
     language: Language,
     return_format: ReturnFormat,
     has_tool_call_tag=False,
+    timeout_duration=10
 ):
     """Helper method to process a single AST entry."""
     prompt_function = prompt_entry["function"]
+    model_result_item_raw = model_result_item
 
     try:
+        signal.signal(signal.SIGALRM, _timeout_handler)
+        signal.alarm(timeout_duration) # Set the alarm
         model_result_item_raw = model_result_item
         model_result_item = handler.decode_ast(
             model_result_item, return_format, has_tool_call_tag
         )
+        signal.alarm(0)
+    except TimeoutException as e:
+        signal.alarm(0)
+        return {
+            "id": index,
+            "model_name": model_name,
+            "test_category": test_category,
+            "valid": False,
+            "error": [f"Parsing/Decoding timed out after {timeout_duration} seconds. Skipping."],
+            "error_type": "ast_decoder:timeout_failure",
+            "prompt": prompt_entry,
+            "model_result_raw": model_result_item_raw,
+            "possible_answer": possible_answer_item,
+        }
     except Exception as e:
+        signal.alarm(0) 
         return {
             "id": index,
             "model_name": model_name,
@@ -531,6 +563,18 @@ def agentic_runner(
 
         if entry_result["valid"]:
             correct_count += 1
+            success_entry = {
+            "id": index, 
+            "model_name": model_name,
+            "test_category": test_category,
+            "valid": True,
+            "prompt": test_entry,
+            "model_result_raw": model_result_list, 
+            "model_result_decoded": multi_turn_model_result_list_decoded, 
+            "possible_answer": possible_answer_item, 
+            "inference_log": model_result[i].get("inference_log", ""),
+        }
+            result.append(success_entry)
         else:
             entry_result["inference_log"] = model_result[i].get("inference_log", "")
             result.append(entry_result)
@@ -573,6 +617,30 @@ def multi_turn_runner(
 
         if entry_result["valid"]:
             correct_count += 1
+            multi_turn_model_result_list_decoded = []
+            for single_turn_model_result_list in multi_turn_model_result_list:
+                single_turn_model_result_list_decoded = []
+                for model_result_item in single_turn_model_result_list:
+                    try:
+                        decoded_result: list[str] = handler.decode_execute(model_result_item, has_tool_call_tag=False)
+                        if is_empty_execute_response(decoded_result):
+                            continue
+                        single_turn_model_result_list_decoded.append(decoded_result)
+                    except Exception:
+                        continue
+                multi_turn_model_result_list_decoded.append(single_turn_model_result_list_decoded)
+            success_entry = {
+            "id": index, 
+            "model_name": model_name,
+            "test_category": test_category, 
+            "valid": True,
+            "prompt": test_entry,
+            "model_result_raw": multi_turn_model_result_list, 
+            "model_result_decoded": multi_turn_model_result_list_decoded, 
+            "possible_answer": multi_turn_ground_truth_list,
+            "inference_log": model_result[i].get("inference_log", ""),
+        }
+            result.append(success_entry)
         else:
             entry_result["inference_log"] = model_result[i].get("inference_log", "")
             result.append(entry_result)
@@ -626,15 +694,23 @@ def ast_file_runner(
     if is_java(test_category):
         language = Language.JAVA
         return_format = ReturnFormat.JAVA
+        if "Meerkat" in model_name or "OLMo" in model_name:
+            return_format = ReturnFormat.JSON
     elif is_js(test_category):
         language = Language.JAVASCRIPT
         return_format = ReturnFormat.JAVASCRIPT
+        if "Meerkat" in model_name or "OLMo" in model_name:
+            return_format = ReturnFormat.JSON
     else:
         language = Language.PYTHON
         return_format = ReturnFormat.PYTHON
+        if "Meerkat" in model_name or "OLMo" in model_name:
+            return_format = ReturnFormat.JSON
 
     result = []
     correct_count = 0
+    skipped_count = 0  
+    TIMEOUT_SECONDS = 10 
     for i in range(len(model_result)):
         index = model_result[i]["id"]
         model_result_item = model_result[i]["result"]
@@ -652,12 +728,35 @@ def ast_file_runner(
             language=language,
             return_format=return_format,
             has_tool_call_tag=False,
+            timeout_duration=TIMEOUT_SECONDS
         )
 
         if entry_result["valid"]:
             correct_count += 1
+            try:
+                decoded_result = handler.decode_ast(
+                model_result_item, return_format, has_tool_call_tag=False
+            )
+            except Exception:
+                decoded_result = "Error decoding a supposedly correct result."
+            success_entry = {
+                "id": index,
+                "model_name": model_name,
+                "test_category": test_category,
+                "valid": True,
+                "prompt": prompt_entry,
+                "model_result_raw": model_result_item,
+                "model_result_decoded": decoded_result,
+                "possible_answer": possible_answer_item,
+            }
+            result.append(success_entry)
         else:
             result.append(entry_result)
+            if entry_result.get("error_type") == "ast_decoder:timeout_failure":
+                skipped_count += 1
+
+    if skipped_count > 0:
+        print(f"  Skipped {skipped_count} samples in '{test_category}' due to parsing timeout.")
 
     return save_eval_results(
         result, correct_count, model_result, test_category, model_name, score_dir

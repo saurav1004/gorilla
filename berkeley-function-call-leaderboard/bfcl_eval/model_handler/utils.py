@@ -187,8 +187,14 @@ def convert_to_tool(functions, mapping, model_style):
         ]:
             oai_tool.append(item)
         elif model_style in [ModelStyle.OPENAI_RESPONSES]:
-            item["type"] = "function"
-            oai_tool.append(item)
+            oai_tool.append(
+                {
+                    "type": "function",
+                    "name": item["name"],
+                    "description": item["description"],
+                    "parameters": item["parameters"],
+                }
+            )
         elif model_style in [
             ModelStyle.COHERE,
             ModelStyle.OPENAI_COMPLETIONS,

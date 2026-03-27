@@ -436,8 +436,8 @@ def load_dataset_entry(
     all_entries = process_agentic_test_case(all_entries)
     all_entries = populate_test_cases_with_predefined_functions(all_entries)
 
-    if include_language_specific_hint:
-        all_entries = add_language_specific_hint_to_function_doc(all_entries)
+    #if include_language_specific_hint:
+    #    all_entries = add_language_specific_hint_to_function_doc(all_entries)
 
     return all_entries
 

@@ -48,7 +48,7 @@ PROMPT_TEMPLATE_MAPPING = {
 }
 
 # This is the default system prompt format
-DEFAULT_SYSTEM_PROMPT_FORMAT = "ret_fmt=python&tool_call_tag=False&func_doc_fmt=json&prompt_fmt=plaintext&style=classic"
+DEFAULT_SYSTEM_PROMPT_FORMAT = "ret_fmt=json&tool_call_tag=False&func_doc_fmt=json&prompt_fmt=plaintext&style=classic"
 
 # NOT USED, just for reference
 # This is the prompt template for the default system prompt format

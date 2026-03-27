@@ -1,0 +1,4 @@
+Rank,Model,Live Overall Acc,AST Summary,Python Simple AST,Python Multiple AST,Python Parallel AST,Python Parallel Multiple AST,Irrelevance Detection,Relevance Detection
+1,Meerkat-7B-SFT-ToolCall,43.45%,43.45%,55.43%,41.60%,12.50%,16.67%,45.81%,87.50%
+2,Qwen3-8B (Prompt),0.00%,N/A,N/A,N/A,N/A,N/A,N/A,N/A
+3,ToolACE-2-8B (FC),0.00%,N/A,N/A,N/A,N/A,N/A,N/A,N/A
